@@ -8,6 +8,9 @@ const SUIT_SYM  = ['♥', '♦', '♣', '♠'];
 const SUIT_NAME = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
 const SUIT_COLOR= ['red', 'red', 'black', 'black'];
 
+// Sort priority: C → H → S → D  (indices match SUIT enum values)
+const SUIT_SORT_ORDER = { 2: 0, 0: 1, 3: 2, 1: 3 };  // CLUBS, HEARTS, SPADES, DIAMONDS
+
 const HAND_VAL = { 1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:10, 11:10, 12:15, 13:20 };
 const RANK_LABEL = { 1:'A', 11:'J', 12:'Q', 13:'K' };
 const ENEMY_STATS = {
@@ -345,8 +348,38 @@ class RegicideGame {
 // ── UI State ─────────────────────────────────────────────────
 const game = new RegicideGame();
 let selectedPositions = new Set();
-let gameMode = 'interactive';
-let numPlayers = 1;
+let gameMode     = 'interactive';
+let numPlayers   = 1;
+let sortAscending = true;  // → ascending (C H S D, low→high)
+
+// ── Sort ──────────────────────────────────────────────────────
+function sortHand() {
+  const s = game.state;
+  if (!s) return;
+  s.hand.sort((a, b) => {
+    // Jokers always last regardless of direction
+    if (a.isJester && !b.isJester) return 1;
+    if (!a.isJester && b.isJester) return -1;
+    if (a.isJester && b.isJester) return 0;
+
+    const suitDiff = SUIT_SORT_ORDER[a.suit] - SUIT_SORT_ORDER[b.suit];
+    if (suitDiff !== 0) return sortAscending ? suitDiff : -suitDiff;
+
+    const valDiff = a.value - b.value;
+    return sortAscending ? valDiff : -valDiff;
+  });
+}
+
+function toggleSort() {
+  sortAscending = !sortAscending;
+  const btn = document.getElementById('btn-sort');
+  btn.textContent = sortAscending ? '→' : '←';
+  btn.title = sortAscending ? 'Ordine ascendente (C H S D, ↑ valore)' : 'Ordine discendente (D S H C, ↓ valore)';
+  selectedPositions.clear();
+  sortHand();
+  renderHand();
+  renderActionBar();
+}
 
 // ── Landing screen ───────────────────────────────────────────
 function selectMode(mode) {
@@ -365,6 +398,9 @@ function startGame() {
   showScreen('screen-game');
   game.reset();
   selectedPositions.clear();
+  sortAscending = true;
+  const btn = document.getElementById('btn-sort');
+  if (btn) { btn.textContent = '→'; }
   renderAll();
 }
 
@@ -380,6 +416,7 @@ function showScreen(id) {
 
 // ── Render ────────────────────────────────────────────────────
 function renderAll() {
+  sortHand();        // maintain sort after every state change
   renderEnemy();
   renderHand();
   renderInfo();
@@ -431,7 +468,9 @@ function renderHand() {
   s.hand.forEach((card, i) => {
     const el    = document.createElement('div');
     const isRed = !card.isJester && (card.suit === SUIT.HEARTS || card.suit === SUIT.DIAMONDS);
-    el.className = 'card hand-card' + (isRed ? ' card-red' : '') + (selectedPositions.has(i) ? ' selected' : '');
+    // card-red/card-black set --card-color CSS variable used by .cr-rank
+    const colorClass = card.isJester ? '' : (isRed ? ' card-red' : ' card-black');
+    el.className = 'card hand-card' + colorClass + (selectedPositions.has(i) ? ' selected' : '');
     if (card.isJester) el.className += ' card-jester';
     el.onclick = () => toggleCard(i);
 
