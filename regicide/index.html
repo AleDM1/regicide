@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Regicide</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     LANDING SCREEN
+══════════════════════════════════════════════ -->
+<div id="screen-landing" class="screen active">
+  <div class="landing-content">
+
+    <h1 class="game-title">REGICIDE</h1>
+    <p class="game-subtitle">Overthrow the corrupted monarchs</p>
+
+    <!-- Mode -->
+    <div class="section-label">Game Mode</div>
+    <div class="mode-grid">
+
+      <button class="mode-btn selected" id="btn-interactive"
+              onclick="selectMode('interactive')">
+        <span class="mode-icon">⚔️</span>
+        <span class="mode-name">Interactive</span>
+        <span class="mode-desc">Play vs the deck</span>
+      </button>
+
+      <button class="mode-btn" disabled
+              title="Train a RL agent – coming soon">
+        <span class="mode-icon">🤖</span>
+        <span class="mode-name">Training</span>
+        <span class="mode-desc">AI training mode</span>
+        <span class="coming-soon">Soon</span>
+      </button>
+
+      <button class="mode-btn" disabled
+              title="AI advises your physical game – coming soon">
+        <span class="mode-icon">🎴</span>
+        <span class="mode-name">Simulated</span>
+        <span class="mode-desc">AI advisor</span>
+        <span class="coming-soon">Soon</span>
+      </button>
+
+    </div>
+
+    <!-- Players -->
+    <div class="section-label">Players</div>
+    <div class="players-grid">
+      <button class="player-btn selected" id="btn-p1"
+              onclick="selectPlayers(1)">Solo</button>
+      <button class="player-btn" disabled>2P</button>
+      <button class="player-btn" disabled>3P</button>
+      <button class="player-btn" disabled>4P</button>
+    </div>
+
+    <!-- Start -->
+    <button class="start-btn" onclick="startGame()">⚔ Start Game ⚔</button>
+
+    <!-- Quick rules -->
+    <details class="rules-toggle">
+      <summary>Quick rules</summary>
+      <div class="rules-body">
+        <p>Defeat 12 enemies (4J → 4Q → 4K) by dealing damage with your cards.</p>
+        <ul>
+          <li><b>♥ Hearts</b> – shuffle discard, place N cards under Tavern deck.</li>
+          <li><b>♦ Diamonds</b> – draw N cards from Tavern.</li>
+          <li><b>♣ Clubs</b> – damage counts double.</li>
+          <li><b>♠ Spades</b> – reduce enemy attack by N (cumulative).</li>
+        </ul>
+        <p>Each enemy is <b>immune</b> to its own suit power (cards still deal damage).</p>
+        <p><b>Combos</b>: play 2–4 cards of the <i>same rank</i> with total value ≤ 10.<br>
+           <b>Animal Companions</b> (Ace): can pair with any single non-Jester card.<br>
+           <b>Jester token (Solo)</b>: discard hand, draw 8 fresh cards (2 per game).</p>
+        <p><b>After playing</b>, the enemy attacks you — discard cards totalling ≥ enemy ATK.<br>
+           If you can't cover the damage, you lose.</p>
+        <p>Defeat last King → <b>Gold</b> (0 Jesters) / <b>Silver</b> (1) / <b>Bronze</b> (2).</p>
+      </div>
+    </details>
+
+  </div><!-- .landing-content -->
+</div><!-- #screen-landing -->
+
+
+<!-- ══════════════════════════════════════════════
+     GAME SCREEN
+══════════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <button class="back-btn" onclick="goToMenu()">← Menu</button>
+    <div id="game-info">
+      <span id="info-castle">Castle: 11</span>
+      <span id="info-tavern">Tavern: 32</span>
+      <span id="info-discard">Discard: 0</span>
+      <span id="info-jesters">🃏 ×2</span>
+    </div>
+  </div>
+
+  <!-- Enemy zone -->
+  <div id="enemy-zone">
+    <div id="enemy-card-container">
+
+      <div id="enemy-card" class="card enemy-card">
+        <div class="card-rank top" id="ec-rank-top">J</div>
+        <div class="card-suit-big red" id="ec-suit">♥</div>
+        <div class="card-rank bot" id="ec-rank-bot">J</div>
+      </div>
+
+      <div id="enemy-stats">
+        <div class="enemy-stat">
+          <div class="stat-label">HP</div>
+          <div class="hp-bar-container">
+            <div class="hp-bar" id="hp-bar" style="width:100%"></div>
+          </div>
+          <div class="stat-value" id="stat-hp">20/20</div>
+        </div>
+        <div class="enemy-stat">
+          <div class="stat-label">⚔ ATK</div>
+          <div class="stat-value" id="stat-atk">10</div>
+        </div>
+        <div class="enemy-stat">
+          <div class="stat-label">🛡 Shield</div>
+          <div class="stat-value" id="stat-shield">0</div>
+        </div>
+        <div class="enemy-stat" id="stat-immunity-box">
+          <div class="stat-label">Immune</div>
+          <div class="stat-value" id="stat-immunity">♥</div>
+        </div>
+      </div><!-- #enemy-stats -->
+
+    </div><!-- #enemy-card-container -->
+  </div><!-- #enemy-zone -->
+
+  <!-- Phase banner -->
+  <div id="phase-banner" class="phase-banner">
+    <span id="phase-text">Your turn – select card(s) and Play, or Yield</span>
+  </div>
+
+  <!-- Hand -->
+  <div id="hand-section">
+    <div class="hand-label">Your Hand (<span id="hand-count">8</span>)</div>
+    <div id="hand-zone"></div>
+  </div>
+
+  <!-- Actions -->
+  <div id="action-bar">
+    <button class="action-btn play-btn"  id="btn-play"  onclick="onPlay()">Play Card(s)</button>
+    <button class="action-btn yield-btn" id="btn-yield" onclick="onYield()">Yield</button>
+    <button class="action-btn jester-btn" id="btn-jester" onclick="onJester()">🃏 Jester (2)</button>
+    <button class="action-btn clear-btn" id="btn-clear" onclick="clearSelection()">✕</button>
+  </div>
+
+  <!-- Log -->
+  <div id="log-section">
+    <div class="log-label">Game Log</div>
+    <div id="game-log"></div>
+  </div>
+
+</div><!-- #screen-game -->
+
+
+<!-- ══════════════════════════════════════════════
+     WIN / LOSS OVERLAY
+══════════════════════════════════════════════ -->
+<div id="overlay" class="hidden">
+  <div id="overlay-box">
+    <div id="overlay-title">Victory!</div>
+    <div id="overlay-sub">Gold – no Jesters used.</div>
+    <button onclick="goToMenu()">Back to Menu</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
