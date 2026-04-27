@@ -27,22 +27,26 @@
   --radius:    10px;
 }
 
-html, body {
+html {
   height: 100%;
   font-family: 'Inter', sans-serif;
   background: var(--bg);
   color: var(--text);
-  overflow: hidden;
+}
+body {
+  min-height: 100%;
+  overflow-y: auto;   /* allow scrollbar when zoomed */
 }
 
 /* ── Screens ─────────────────────────────────────────────── */
-.screen { display: none; height: 100vh; overflow: hidden; }
+.screen { display: none; min-height: 100vh; }
 .screen.active { display: flex; flex-direction: column; }
 
 /* ── LANDING ─────────────────────────────────────────────── */
 #screen-landing {
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-top: max(40px, 10vh);
   background:
     radial-gradient(ellipse at 20% 50%, rgba(212,160,23,.08) 0%, transparent 60%),
     radial-gradient(ellipse at 80% 20%, rgba(204,34,0,.07) 0%, transparent 50%),
@@ -235,7 +239,7 @@ html, body {
 .card-rank {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--card-color);
+  color: #111;
   line-height: 1;
 }
 .card-rank.bot { transform: rotate(180deg); }
@@ -329,7 +333,7 @@ html, body {
 .card-corner.top-left  { align-items: flex-start; }
 .card-corner.bottom-right { align-items: flex-end; }
 .rot180 { transform: rotate(180deg); }
-.cr-rank { font-size: .85rem; font-weight: 700; line-height: 1; color: var(--card-color); }
+.cr-rank { font-size: .85rem; font-weight: 700; line-height: 1; color: #111; }
 .cr-suit { font-size: .7rem; line-height: 1; }
 .cr-suit.red   { color: var(--red-card); }
 .cr-suit.black { color: #1a1a1a; }
