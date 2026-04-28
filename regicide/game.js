@@ -312,21 +312,20 @@ class RegicideGame {
       return;
     }
     const handValue = s.hand.reduce((sum, c) => sum + c.value, 0);
-    if (handValue < atk && s.hand.length > 0) {
+    const canCover  = handValue >= atk;
+    if (!canCover && s.jestersAvail === 0) {
       s.gameOver = true;
       s.won = false;
-      this._addLog(`💀 DEFEAT: Can't cover ${atk} damage (hand value ${handValue}).`);
+      this._addLog(`💀 DEFEAT: Can't cover ${atk} damage (hand value ${handValue}, no Jesters left).`);
       return;
     }
-    if (s.hand.length === 0 && atk > 0) {
-      s.gameOver = true;
-      s.won = false;
-      this._addLog(`💀 DEFEAT: Empty hand, enemy attacks for ${atk}.`);
-      return;
-    }
-    s.phase    = 'discard';
+    s.phase     = 'discard';
     s.dmgToCoer = atk;
-    this._addLog(`⚠ Enemy attacks for ${atk}! Discard cards with total value ≥ ${atk}.`);
+    if (!canCover) {
+      this._addLog(`⚠ Enemy attacks for ${atk}! Hand value ${handValue} – use 🃏 Jester to redraw before discarding!`);
+    } else {
+      this._addLog(`⚠ Enemy attacks for ${atk}! Discard cards with total value ≥ ${atk}.`);
+    }
   }
 
   _advanceTurn() {
