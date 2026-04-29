@@ -353,6 +353,7 @@ let sortAscending = true;  // → ascending (C H S D, low→high)
 
 // ── Sort ──────────────────────────────────────────────────────
 function sortHand() {
+  if (window.mpRoom) return;
   const s = game.state;
   if (!s) return;
   s.hand.sort((a, b) => {
@@ -380,6 +381,184 @@ function toggleSort() {
   renderActionBar();
 }
 
+// ─────────────────────────────────────────────────────────────
+//  RegicideGame2P – 2-player cooperative engine
+// ─────────────────────────────────────────────────────────────
+class RegicideGame2P extends RegicideGame {
+  constructor() { super(); }
+
+  reset() {
+    const castle = makeCastleDeck();
+    const tavern = makeTavernDeck();
+    const h0 = [], h1 = [];
+    for (let i = 0; i < 7 && tavern.length; i++) {
+      h0.push(tavern.shift());
+      if (tavern.length) h1.push(tavern.shift());
+    }
+    const enemy = castle.shift();
+    this.state = {
+      castle, tavern, discard: [],
+      hands: [h0, h1], currentPlayer: 0, lastYielded: [false, false],
+      enemy, totalDamage: 0, shield: 0, immunePool: 0, jesterImmune: false,
+      playedVsEnemy: [], phase: 'play', dmgToCoer: 0,
+      jestersAvail: 0, jestersUsed: 0,
+      gameOver: false, won: false, victoryType: null, numPlayers: 2,
+    };
+    this.log = [];
+    this._addLog('⚔ Game started! First enemy: ' + enemy.label);
+    return this.state;
+  }
+
+  get currentHand() { return this.state.hands[this.state.currentPlayer]; }
+
+  isValidPlay(pos) {
+    const h = this.currentHand, cs = pos.map(i => h[i]), n = cs.length;
+    if (!n || pos.some(i => i >= h.length)) return false;
+    if (n === 1) return true;
+    if (n === 2) {
+      if (cs.some(c => c.isJester)) return false;
+      if (cs.some(c => c.isAC)) return true;
+      return cs[0].rank === cs[1].rank && cs[0].value + cs[1].value <= 10;
+    }
+    if (cs.some(c => c.isJester || c.isAC)) return false;
+    if (new Set(cs.map(c => c.rank)).size > 1) return false;
+    return cs.reduce((s, c) => s + c.value, 0) <= 10;
+  }
+
+  isValidDiscard(pos) {
+    const h = this.currentHand;
+    if (pos.some(i => i >= h.length)) return false;
+    return pos.reduce((s, i) => s + h[i].value, 0) >= this.state.dmgToCoer;
+  }
+
+  canYield() { return !this.state.lastYielded[1 - this.state.currentPlayer]; }
+
+  playCards(pos) {
+    const s = this.state; if (s.gameOver || s.phase !== 'play') return;
+    const h = this.currentHand, cs = pos.map(i => h[i]);
+    pos.slice().sort((a,b) => b-a).forEach(i => h.splice(i, 1));
+    cs.forEach(c => s.playedVsEnemy.push(c));
+    s.lastYielded[s.currentPlayer] = false;
+    const atk = cs.reduce((s, c) => s + c.value, 0);
+    this._addLog(`▶ P${s.currentPlayer+1} plays ${cs.map(c=>c.label).join('+')}  [ATK ${atk}]`);
+    if (cs.length === 1 && cs[0].isJester) {
+      s.jesterImmune = true;
+      if (s.enemy.suit === SUIT.SPADES) { s.shield += s.immunePool; s.immunePool = 0; }
+      this._addLog('🃏 Jester – immunity cancelled!');
+      this._nextPlayer(); return;
+    }
+    this._applySuitPowers(cs, atk);
+    const imm = s.jesterImmune ? null : s.enemy.suit;
+    const dmg = cs.some(c => c.suit===SUIT.CLUBS) && imm!==SUIT.CLUBS ? atk*2 : atk;
+    s.totalDamage += dmg;
+    const hpMax = ENEMY_STATS[s.enemy.rank].health;
+    this._addLog(`💥 Damage ${dmg}  (total ${s.totalDamage}/${hpMax})`);
+    if (s.totalDamage >= hpMax) { this._defeatEnemy(s.totalDamage === hpMax); return; }
+    this._beginStep4();
+  }
+
+  yieldTurn() {
+    const s = this.state; if (s.gameOver || s.phase !== 'play') return;
+    s.lastYielded[s.currentPlayer] = true;
+    this._addLog(`⏭ P${s.currentPlayer+1} yields.`);
+    this._nextPlayer();   // pass turn – NO enemy attack
+  }
+
+  discardCards(pos) {
+    const s = this.state; if (s.gameOver || s.phase !== 'discard') return;
+    const h = this.currentHand, cs = pos.map(i => h[i]);
+    const total = cs.reduce((sum, c) => sum + c.value, 0);
+    if (total < s.dmgToCoer) { this._addLog(`❌ Need ${s.dmgToCoer}, got ${total}.`); return; }
+    pos.slice().sort((a,b) => b-a).forEach(i => s.discard.push(h.splice(i, 1)[0]));
+    this._addLog(`🗑 P${s.currentPlayer+1} discards ${cs.map(c=>c.label).join('+')} (${total}).`);
+    s.dmgToCoer = 0; s.phase = 'play';
+    this._nextPlayer();
+  }
+
+  _nextPlayer() {
+    const s = this.state;
+    s.currentPlayer = 1 - s.currentPlayer;
+    this._addLog(`— P${s.currentPlayer+1}'s turn —`);
+  }
+
+  _beginStep4() {
+    const s = this.state;
+    const atk = Math.max(0, ENEMY_STATS[s.enemy.rank].attack - s.shield);
+    if (atk <= 0) { this._addLog('🛡 Fully shielded.'); this._nextPlayer(); return; }
+    const h = this.currentHand, hv = h.reduce((s, c) => s + c.value, 0);
+    if (hv < atk) {
+      s.gameOver = true; s.won = false;
+      this._addLog(`💀 DEFEAT: P${s.currentPlayer+1} can't cover ${atk} (hand value ${hv}).`); return;
+    }
+    s.phase = 'discard'; s.dmgToCoer = atk;
+    this._addLog(`⚠ Enemy attacks ${atk}! P${s.currentPlayer+1} must discard.`);
+  }
+
+  _defeatEnemy(exact) {
+    const s = this.state;
+    this._addLog(`🏆 ${s.enemy.label} DEFEATED!`);
+    if (exact) { s.tavern.unshift(s.enemy); this._addLog('  (Exact – enemy on Tavern top.)'); }
+    else s.discard.push(s.enemy);
+    s.discard.push(...s.playedVsEnemy.splice(0));
+    s.totalDamage = 0; s.shield = 0; s.immunePool = 0; s.jesterImmune = false;
+    s.lastYielded = [false, false];
+    if (!s.castle.length) {
+      s.gameOver = true; s.won = true; s.victoryType = 'Gold';
+      this._addLog('🎉 YOU WIN! Gold Victory!'); return;
+    }
+    s.enemy = s.castle.shift();
+    this._addLog(`Next enemy: ${s.enemy.label} (HP ${ENEMY_STATS[s.enemy.rank].health} ATK ${ENEMY_STATS[s.enemy.rank].attack})`);
+    s.phase = 'play';
+  }
+
+  _diamondsDraw(n) {
+    const s = this.state; const MAX = 7; let drawn = 0;
+    for (let i = 0; drawn < n && s.tavern.length; i++) {
+      const p = (s.currentPlayer + i) % 2;
+      if (s.hands[p].length < MAX) { s.hands[p].push(s.tavern.shift()); drawn++; }
+      if (s.hands[0].length >= MAX && s.hands[1].length >= MAX) break;
+    }
+    return drawn;
+  }
+
+  get effectiveAtk() { return Math.max(0, ENEMY_STATS[this.state.enemy.rank].attack - this.state.shield); }
+}
+
+// ── Serialization helpers (Card ↔ plain JSON for Firebase) ─────
+const _sc  = c => c ? { r: c.rank, s: c.suit, j: c.isJester ? 1 : 0 } : null;
+const _dc  = o => o ? new Card(o.r, o.s, !!o.j) : null;
+const _sa  = a => (a || []).map(_sc);
+const _da  = a => (a || []).map(_dc);
+
+function serializeGameState(g2) {
+  const s = g2.state;
+  return {
+    ca: _sa(s.castle), ta: _sa(s.tavern), di: _sa(s.discard),
+    h0: _sa(s.hands[0]), h1: _sa(s.hands[1]),
+    cp: s.currentPlayer, ly: s.lastYielded,
+    en: _sc(s.enemy), td: s.totalDamage, sh: s.shield, ip: s.immunePool,
+    ji: s.jesterImmune ? 1 : 0, pve: _sa(s.playedVsEnemy),
+    ph: s.phase, dtc: s.dmgToCoer,
+    go: s.gameOver ? 1 : 0, wo: s.won ? 1 : 0, vt: s.victoryType,
+    lg: g2.log,
+  };
+}
+
+function deserializeGameState(data, g2) {
+  g2.state = {
+    castle: _da(data.ca), tavern: _da(data.ta), discard: _da(data.di),
+    hands: [_da(data.h0), _da(data.h1)],
+    currentPlayer: data.cp, lastYielded: data.ly || [false, false],
+    enemy: _dc(data.en), totalDamage: data.td, shield: data.sh,
+    immunePool: data.ip, jesterImmune: !!data.ji, playedVsEnemy: _da(data.pve),
+    phase: data.ph, dmgToCoer: data.dtc,
+    jestersAvail: 0, jestersUsed: 0,
+    gameOver: !!data.go, won: !!data.wo, victoryType: data.vt, numPlayers: 2,
+  };
+  const lg = data.lg;
+  g2.log = Array.isArray(lg) ? lg : lg ? Object.values(lg) : [];
+}
+
 // ── Landing screen ───────────────────────────────────────────
 function selectMode(mode) {
   gameMode = mode;
@@ -394,6 +573,11 @@ function selectPlayers(n) {
 }
 
 function startGame() {
+  if (numPlayers === 2) {
+    showScreen('screen-lobby');
+    if (typeof initLobby === 'function') initLobby();
+    return;
+  }
   showScreen('screen-game');
   game.reset();
   selectedPositions.clear();
@@ -415,6 +599,7 @@ function showScreen(id) {
 
 // ── Render ────────────────────────────────────────────────────
 function renderAll() {
+  if (window.mpRoom) { mpRenderAll(); return; }
   sortHand();        // maintain sort after every state change
   renderEnemy();
   renderHand();
@@ -580,6 +765,7 @@ function checkGameOver() {
 
 // ── User interactions ─────────────────────────────────────────
 function toggleCard(idx) {
+  if (window.mpRoom) { mpToggleCard(idx); return; }
   const s = game.state;
   if (!s || s.gameOver) return;
   if (selectedPositions.has(idx)) selectedPositions.delete(idx);
@@ -595,6 +781,7 @@ function clearSelection() {
 }
 
 function onPlay() {
+  if (window.mpRoom) { mpOnPlay(); return; }
   const s = game.state;
   if (!s || s.gameOver) return;
   const sel = [...selectedPositions].sort((a,b) => a - b);
@@ -620,6 +807,7 @@ function onPlay() {
 }
 
 function onYield() {
+  if (window.mpRoom) { mpOnYield(); return; }
   const s = game.state;
   if (!s || s.gameOver || s.phase !== 'play') return;
   game.yieldTurn();

@@ -507,3 +507,167 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── LOBBY SCREEN (2P) ───────────────────────────────────── */
+#screen-lobby {
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: max(40px, 8vh);
+  background:
+    radial-gradient(ellipse at 30% 60%, rgba(212,160,23,.07) 0%, transparent 60%),
+    var(--bg);
+}
+
+.lobby-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 20px;
+}
+
+.mp-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: .95rem;
+  outline: none;
+  transition: border-color .2s;
+}
+.mp-input:focus { border-color: var(--gold); }
+.mp-input::placeholder { color: var(--muted); }
+
+.lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lobby-or {
+  text-align: center;
+  font-size: .78rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+}
+
+.lobby-join-row {
+  display: flex;
+  gap: 8px;
+}
+
+.mp-code-input {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  font-family: 'Cinzel', monospace;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.mp-join-btn {
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 2px solid var(--gold);
+  background: transparent;
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+.mp-join-btn:hover { background: var(--gold); color: #1a1000; }
+
+.mp-room-display {
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: .3em;
+  color: var(--gold);
+  padding: 20px 16px 14px;
+  background: var(--bg2);
+  border: 2px dashed var(--gold);
+  border-radius: var(--radius);
+  text-shadow: 0 0 20px rgba(212,160,23,.4);
+}
+.mp-room-display::before {
+  content: 'ROOM CODE';
+  display: block;
+  font-size: .65rem;
+  letter-spacing: .15em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.mp-status {
+  padding: 12px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .88rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Opponent hand (2P in-game) ──────────────────────────── */
+#opp-hand-section {
+  padding: 8px 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.opp-hand-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.opp-hand-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 130px;
+}
+
+.opp-hand-zone {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.card-back {
+  width: 36px;
+  height: 50px;
+  border-radius: 6px;
+  border: 1px solid #3949ab;
+  background: repeating-linear-gradient(
+    45deg,
+    #1a237e,
+    #1a237e 4px,
+    #283593 4px,
+    #283593 8px
+  );
+  flex-shrink: 0;
+}
+
+/* Locked hand cards (not your turn) */
+.hand-card.mp-locked {
+  cursor: default;
+  opacity: .75;
+}
+.hand-card.mp-locked:hover {
+  transform: none;
+  box-shadow: 0 4px 12px var(--shadow);
+}

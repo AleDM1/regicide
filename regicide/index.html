@@ -66,7 +66,8 @@
     <div class="players-grid">
       <button class="player-btn selected" id="btn-p1"
               onclick="selectPlayers(1)">Solo</button>
-      <button class="player-btn" disabled>2P</button>
+      <button class="player-btn" id="btn-p2"
+              onclick="selectPlayers(2)">2P</button>
       <button class="player-btn" disabled>3P</button>
       <button class="player-btn" disabled>4P</button>
     </div>
@@ -97,6 +98,43 @@
 
   </div><!-- .landing-content -->
 </div><!-- #screen-landing -->
+
+
+<!-- ══════════════════════════════════════════════
+     LOBBY SCREEN (2P)
+══════════════════════════════════════════════ -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-content">
+
+    <h1 class="game-title">REGICIDE</h1>
+    <p class="game-subtitle">2 Players — Online</p>
+
+    <div class="section-label">Your Name</div>
+    <input id="mp-name" type="text" class="mp-input"
+           placeholder="Enter your name…" maxlength="16" autocomplete="off">
+
+    <div class="lobby-actions">
+      <button class="start-btn" onclick="mpCreate()">⚔ Create Game</button>
+      <div class="lobby-or">— or join an existing game —</div>
+      <div class="lobby-join-row">
+        <input id="mp-code-input" type="text" class="mp-input mp-code-input"
+               placeholder="ROOM CODE" maxlength="6" autocomplete="off"
+               oninput="this.value=this.value.toUpperCase()">
+        <button class="mp-join-btn" onclick="mpJoin()">Join →</button>
+      </div>
+    </div>
+
+    <!-- Room code display (shown after creating) -->
+    <div id="mp-room-display" class="mp-room-display hidden"></div>
+
+    <!-- Status messages -->
+    <div id="mp-status" class="mp-status hidden"></div>
+
+    <button class="back-btn" style="align-self:center;margin-top:24px"
+            onclick="goToMenu()">← Back to Menu</button>
+
+  </div>
+</div><!-- #screen-lobby -->
 
 
 <!-- ══════════════════════════════════════════════
@@ -155,21 +193,30 @@
     <span id="phase-text">Your turn – select card(s) and Play, or Yield</span>
   </div>
 
-  <!-- Hand -->
+  <!-- Opponent hand (2P only – hidden in solo) -->
+  <div id="opp-hand-section" class="hidden">
+    <div class="opp-hand-inner">
+      <div id="opp-hand-label" class="opp-hand-label">Opponent – 0 cards</div>
+      <div id="opp-hand-zone"  class="opp-hand-zone"></div>
+    </div>
+  </div>
+
+  <!-- My hand -->
   <div id="hand-section">
     <div class="hand-header">
       <div class="hand-label">Your Hand (<span id="hand-count">8</span>)</div>
-      <button id="btn-sort" class="sort-btn" onclick="toggleSort()" title="Toggle sort order (ascending / descending)">→</button>
+      <button id="btn-sort" class="sort-btn" onclick="toggleSort()"
+              title="Toggle sort order (ascending / descending)">→</button>
     </div>
     <div id="hand-zone"></div>
   </div>
 
   <!-- Actions -->
   <div id="action-bar">
-    <button class="action-btn play-btn"  id="btn-play"  onclick="onPlay()">Play Card(s)</button>
-    <button class="action-btn yield-btn" id="btn-yield" onclick="onYield()">Yield</button>
+    <button class="action-btn play-btn"   id="btn-play"   onclick="onPlay()">Play Card(s)</button>
+    <button class="action-btn yield-btn"  id="btn-yield"  onclick="onYield()">Yield</button>
     <button class="action-btn jester-btn" id="btn-jester" onclick="onJester()">🃏 Jester (2)</button>
-    <button class="action-btn clear-btn" id="btn-clear" onclick="clearSelection()">✕</button>
+    <button class="action-btn clear-btn"  id="btn-clear"  onclick="clearSelection()">✕</button>
   </div>
 
   <!-- Log -->
@@ -192,6 +239,13 @@
   </div>
 </div>
 
+<!-- Firebase SDK (compat v9) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- Project config (fill in firebase-config.js before using 2P) -->
+<script src="firebase-config.js"></script>
+
 <script src="game.js"></script>
+<script src="multiplayer.js"></script>
 </body>
 </html>
