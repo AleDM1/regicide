@@ -193,7 +193,10 @@ function _mpEnterGame() {
     if (!d || !d.gs) return;
     if (d.status === 'abandoned') { _mpHandleAbandoned(); return; }
     room.loadFrom(d);
-    _mpSel.clear();
+    // Only reset selection when it's NOT our turn (opponent pushed an update).
+    // If Firebase re-fires while it's still our turn (e.g. reconnect), keep
+    // any cards the local player already selected so Play stays enabled.
+    if (!room.isMyTurn()) _mpSel.clear();
     mpRenderAll();
   });
 

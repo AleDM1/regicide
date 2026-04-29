@@ -375,6 +375,24 @@ function toggleSort() {
   const btn = document.getElementById('btn-sort');
   btn.textContent = sortAscending ? '→' : '←';
   btn.title = sortAscending ? 'Ordine ascendente (C H S D, ↑ valore)' : 'Ordine discendente (D S H C, ↓ valore)';
+  if (window.mpRoom) {
+    const s = window.mpRoom.game.state;
+    if (s) {
+      const hand = s.hands[window.mpRoom.myIndex];
+      hand.sort((a, b) => {
+        if (a.isJester && !b.isJester) return 1;
+        if (!a.isJester && b.isJester) return -1;
+        if (a.isJester && b.isJester) return 0;
+        const sd = SUIT_SORT_ORDER[a.suit] - SUIT_SORT_ORDER[b.suit];
+        if (sd !== 0) return sortAscending ? sd : -sd;
+        const vd = a.value - b.value;
+        return sortAscending ? vd : -vd;
+      });
+    }
+    _mpSel.clear();
+    mpRenderAll();
+    return;
+  }
   selectedPositions.clear();
   sortHand();
   renderHand();
@@ -775,6 +793,12 @@ function toggleCard(idx) {
 }
 
 function clearSelection() {
+  if (window.mpRoom) {
+    _mpSel.clear();
+    _mpRenderMyHand(window.mpRoom.game.state);
+    _mpRenderActionBar(window.mpRoom.game.state);
+    return;
+  }
   selectedPositions.clear();
   renderHand();
   renderActionBar();
