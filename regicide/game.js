@@ -40,6 +40,34 @@ class Card {
   get color()  { return SUIT_COLOR[this.suit]; }
 }
 
+// ── Card artwork ─────────────────────────────────────────────
+// SVG deck by Adrian Kennard (RevK), CC0 – see cards/CREDITS.txt
+const CARDS_DIR = 'cards/';
+const CARD_BACK = '1B';
+const RANK_CODE = { 1:'A', 10:'T', 11:'J', 12:'Q', 13:'K' };  // file-name ranks
+const SUIT_CODE = ['H', 'D', 'C', 'S'];                       // indices match SUIT
+const RANK_WORD = { 1:'Ace', 11:'Jack', 12:'Queen', 13:'King' };
+
+function cardCode(card) {
+  if (card.isJester) return '1J';                              // joker artwork
+  return (RANK_CODE[card.rank] || String(card.rank)) + SUIT_CODE[card.suit];
+}
+
+function cardAlt(card) {
+  if (card.isJester) return 'Joker';
+  return `${RANK_WORD[card.rank] || card.rank} of ${SUIT_NAME[card.suit]}`;
+}
+
+function cardFaceHtml(card) {
+  return `<img class="card-face" src="${CARDS_DIR}${cardCode(card)}.svg" `
+       + `alt="${cardAlt(card)}" draggable="false">`;
+}
+
+function cardBackHtml() {
+  return `<img class="card-face" src="${CARDS_DIR}${CARD_BACK}.svg" `
+       + `alt="Face-down card" draggable="false">`;
+}
+
 // ── Deck builders ─────────────────────────────────────────────
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -632,13 +660,10 @@ function renderEnemy() {
   const s = game.state;
   if (!s) return;
   const e = s.enemy;
-  const isRed = e.suit === SUIT.HEARTS || e.suit === SUIT.DIAMONDS;
 
-  document.getElementById('ec-rank-top').textContent = e.rankStr;
-  document.getElementById('ec-rank-bot').textContent = e.rankStr;
-  document.getElementById('ec-suit').textContent     = e.suitSym;
-  document.getElementById('ec-suit').className       = 'card-suit-big ' + (isRed ? 'red' : 'black');
-  document.getElementById('enemy-card').className    = 'card enemy-card ' + (isRed ? 'card-red' : 'card-black');
+  const face = document.getElementById('ec-img');
+  face.src = CARDS_DIR + cardCode(e) + '.svg';
+  face.alt = cardAlt(e);
 
   const hpMax  = ENEMY_STATS[e.rank].health;
   const hpLeft = Math.max(0, hpMax - s.totalDamage);
@@ -668,27 +693,10 @@ function renderHand() {
   if (!s) return;
 
   s.hand.forEach((card, i) => {
-    const el    = document.createElement('div');
-    const isRed = !card.isJester && (card.suit === SUIT.HEARTS || card.suit === SUIT.DIAMONDS);
-    // card-red/card-black set --card-color CSS variable used by .cr-rank
-    const colorClass = card.isJester ? '' : (isRed ? ' card-red' : ' card-black');
-    el.className = 'card hand-card' + colorClass + (selectedPositions.has(i) ? ' selected' : '');
-    if (card.isJester) el.className += ' card-jester';
+    const el = document.createElement('div');
+    el.className = 'card hand-card' + (selectedPositions.has(i) ? ' selected' : '');
     el.onclick = () => toggleCard(i);
-
-    el.innerHTML = `
-      <div class="card-corner top-left">
-        <div class="cr-rank">${card.rankStr}</div>
-        <div class="cr-suit ${isRed ? 'red' : 'black'}">${card.isJester ? '🃏' : card.suitSym}</div>
-      </div>
-      <div class="card-center">
-        <div class="card-center-suit ${isRed ? 'red' : 'black'}">${card.isJester ? '🃏' : card.suitSym}</div>
-      </div>
-      <div class="card-corner bottom-right rot180">
-        <div class="cr-rank">${card.rankStr}</div>
-        <div class="cr-suit ${isRed ? 'red' : 'black'}">${card.isJester ? '🃏' : card.suitSym}</div>
-      </div>
-    `;
+    el.innerHTML = cardFaceHtml(card);
     zone.appendChild(el);
   });
 
