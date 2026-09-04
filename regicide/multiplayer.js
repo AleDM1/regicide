@@ -277,26 +277,12 @@ function _mpRenderMyHand(s) {
   zone.innerHTML = '';
 
   myHand.forEach((card, i) => {
-    const isRed = !card.isJester && (card.suit === SUIT.HEARTS || card.suit === SUIT.DIAMONDS);
-    const colorCls = card.isJester ? '' : (isRed ? ' card-red' : ' card-black');
     const el = document.createElement('div');
-    el.className = 'card hand-card' + colorCls
+    el.className = 'card hand-card'
       + (_mpSel.has(i) ? ' selected' : '')
       + (!myTurn ? ' mp-locked' : '');
-    if (card.isJester) el.className += ' card-jester';
     if (myTurn) el.onclick = () => mpToggleCard(i);
-    el.innerHTML = `
-      <div class="card-corner top-left">
-        <div class="cr-rank">${card.rankStr}</div>
-        <div class="cr-suit ${isRed?'red':'black'}">${card.isJester?'🃏':card.suitSym}</div>
-      </div>
-      <div class="card-center">
-        <div class="card-center-suit ${isRed?'red':'black'}">${card.isJester?'🃏':card.suitSym}</div>
-      </div>
-      <div class="card-corner bottom-right rot180">
-        <div class="cr-rank">${card.rankStr}</div>
-        <div class="cr-suit ${isRed?'red':'black'}">${card.isJester?'🃏':card.suitSym}</div>
-      </div>`;
+    el.innerHTML = cardFaceHtml(card);
     zone.appendChild(el);
   });
 
@@ -316,7 +302,7 @@ function _mpRenderOppHand(s) {
   if (!lbl || !zone) return;
 
   lbl.textContent = `${oppName} – ${oppHand.length} cards`;
-  zone.innerHTML = oppHand.map(() => '<div class="card-back"></div>').join('');
+  zone.innerHTML = oppHand.map(() => `<div class="card-back">${cardBackHtml()}</div>`).join('');
 }
 
 function _mpRenderPhaseBanner(s) {
